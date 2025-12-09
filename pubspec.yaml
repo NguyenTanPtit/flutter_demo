@@ -1,0 +1,57 @@
+name: flutter_app
+description: A new Flutter project.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.7
+  rxdart: ^0.28.0
+
+  # Storage & Database
+  flutter_secure_storage: ^9.0.0
+  drift: ^2.20.0 # Reverted to safe version
+  sqlite3_flutter_libs: ^0.5.20
+  path_provider: ^2.1.2
+
+  # Networking
+  dio: ^5.4.0
+
+  # Navigation
+  # go_router v17 requires newer SDKs often, v14 is very stable
+  go_router: ^14.8.0
+  path: ^1.9.0
+
+  # Device Hardware - versions matched to Dart 3.7 compatibility
+  camera: ^0.11.0 # Downgraded from 0.11.3 to allow 0.11.2+1
+  geolocator: ^13.0.0 # Downgraded from 14.x
+  permission_handler: ^11.3.0 # Downgraded from 12.x
+  record: ^6.1.2 # Downgraded from 6.x
+
+  audioplayers: ^6.0.0
+  image_picker: ^1.1.0
+  video_player: ^2.8.6
+  gal: ^2.3.0
+  flutter_image_compress: ^2.3.0
+
+  # Utilities
+  intl: ^0.19.0
+  flutter_vector_icons: ^2.0.0
+  uuid: ^4.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0 # Keep this at 5.0.0
+  build_runner: ^2.4.8
+  drift_dev: ^2.20.0
+
+flutter:
+  uses-material-design: true
