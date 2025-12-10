@@ -1,4 +1,5 @@
 import 'package:flutter_app/data/models/work_eniity_mapping.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../data/local/database.dart';
 import '../../data/models/work_entity.dart';
@@ -10,8 +11,27 @@ class WorkRepository {
   // Inject WorkService (chứa logic API) chứ không dùng ApiClient trực tiếp nữa
   final WorkService _workService;
   final AppDatabase _db;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   WorkRepository(this._workService, this._db);
+
+  Future<Resource<List<WorkEntity>>> reloadWorks(int userId) async {
+    try {
+      await _storage.delete(key: 'token');
+      final tokenResource = await _workService.getTokenByUserName('tannv5');
+
+      if (tokenResource is ResourceSuccess) {
+        final newToken = tokenResource.data?.result;
+        if (newToken != null && newToken.isNotEmpty) {
+          await _storage.write(key: 'token', value: newToken);
+          return await getWorks(userId);
+        }
+      }
+      return Resource.error(Exception('Failed to reload token'));
+    } catch (e) {
+      return Resource.error(Exception('Reload failed: $e'));
+    }
+  }
 
   Future<Resource<List<WorkEntity>>> getWorks(int userId) async {
     try {

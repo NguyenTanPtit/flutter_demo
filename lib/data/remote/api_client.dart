@@ -22,6 +22,10 @@ class ApiClient {
     _dioInstance.interceptors.add(QueuedInterceptorsWrapper(
       // --- onRequest handles MISSING tokens ---
       onRequest: (options, handler) async {
+        if (options.path.contains('getTokenByUsername')) {
+          return handler.next(options);
+        }
+
         var token = await _storage.read(key: 'token');
         if (token == null || token.isEmpty) {
           print('Token not found on storage, fetching a new one...');
