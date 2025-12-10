@@ -16,6 +16,8 @@ class LoadWorks extends WorkEvent {
   const LoadWorks({this.pageIndex = 0});
 }
 
+class ReloadWorks extends WorkEvent {}
+
 // State
 abstract class WorkState extends Equatable {
   const WorkState();
@@ -42,12 +44,27 @@ class WorkBloc extends Bloc<WorkEvent, WorkState> {
 
   WorkBloc(this.repository) : super(WorkInitial()) {
     on<LoadWorks>(_onLoadWorks);
+    on<ReloadWorks>(_onReloadWorks);
   }
 
   Future<void> _onLoadWorks(LoadWorks event, Emitter<WorkState> emit) async {
     emit(WorkLoading());
     try {
       final resource = await repository.getWorks(101036);
+      if (resource is ResourceSuccess<List<WorkEntity>>) {
+        emit(WorkLoaded(resource.data ?? []));
+      } else if (resource is ResourceError<List<WorkEntity>>) {
+        emit(WorkError(resource.message));
+      }
+    } catch (e) {
+      emit(WorkError(e.toString()));
+    }
+  }
+
+  Future<void> _onReloadWorks(ReloadWorks event, Emitter<WorkState> emit) async {
+    emit(WorkLoading());
+    try {
+      final resource = await repository.reloadWorks(101036);
       if (resource is ResourceSuccess<List<WorkEntity>>) {
         emit(WorkLoaded(resource.data ?? []));
       } else if (resource is ResourceError<List<WorkEntity>>) {

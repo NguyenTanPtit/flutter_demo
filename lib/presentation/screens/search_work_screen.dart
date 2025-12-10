@@ -29,6 +29,12 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
             child: Row(
               children: [
                 Expanded(child: TextField(decoration: InputDecoration(hintText: 'Search...', border: OutlineInputBorder()))),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    context.read<WorkBloc>().add(ReloadWorks());
+                  },
+                ),
                 IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}),
               ],
             ),
