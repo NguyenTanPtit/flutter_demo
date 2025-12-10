@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/work_entity.dart';
+import '../../../data/remote/resource.dart';
 import '../../../domain/repositories/work_repository.dart';
 
 // Events
@@ -46,8 +47,12 @@ class WorkBloc extends Bloc<WorkEvent, WorkState> {
   Future<void> _onLoadWorks(LoadWorks event, Emitter<WorkState> emit) async {
     emit(WorkLoading());
     try {
-      final works = await repository.searchWorks(pageIndex: event.pageIndex, pageSize: 20);
-      emit(WorkLoaded(works));
+      final resource = await repository.getWorks(101036);
+      if (resource is ResourceSuccess<List<WorkEntity>>) {
+        emit(WorkLoaded(resource.data ?? []));
+      } else if (resource is ResourceError<List<WorkEntity>>) {
+        emit(WorkError(resource.message));
+      }
     } catch (e) {
       emit(WorkError(e.toString()));
     }

@@ -125,3 +125,23 @@ class WorkEntity {
     };
   }
 }
+
+class SearchWorkResponse {
+  final int total;
+  final List<WorkEntity>? workList;
+
+  SearchWorkResponse({
+    required this.total,
+    this.workList,
+  });
+
+  factory SearchWorkResponse.fromJson(Map<String, dynamic> json) {
+    return SearchWorkResponse(
+      total: json['total'] ?? 0,
+
+      workList: (json['workList'] as List<dynamic>?)
+          ?.map((item) => WorkEntity.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}

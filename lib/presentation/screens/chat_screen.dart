@@ -114,6 +114,26 @@ class _ChatScreenState extends State<ChatScreen> {
         },
         child: Column(
           children: [
+            BlocBuilder<ChatBloc, ChatState>(
+              buildWhen: (previous, current) => previous.downloadProgress != current.downloadProgress || previous.isModelReady != current.isModelReady,
+              builder: (context, state) {
+                if (!state.isModelReady) {
+                  return Container(
+                    padding: const EdgeInsets.all(8.0),
+                    color: Colors.amber[100],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Initializing Model (${state.downloadProgress}%)...'),
+                        const SizedBox(height: 5),
+                        LinearProgressIndicator(value: state.downloadProgress / 100.0),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
             Expanded(
               child: BlocBuilder<ChatBloc, ChatState>(
                 builder: (context, state) {
@@ -141,40 +161,50 @@ class _ChatScreenState extends State<ChatScreen> {
                   ],
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.photo),
-                    onPressed: () => _pickImage(ImageSource.gallery),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.camera_alt),
-                    onPressed: () => _pickImage(ImageSource.camera),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      decoration: const InputDecoration(
-                        hintText: 'Nhập tin nhắn...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+            BlocBuilder<ChatBloc, ChatState>(
+              builder: (context, state) {
+                return IgnorePointer(
+                  ignoring: !state.isModelReady,
+                  child: Opacity(
+                    opacity: state.isModelReady ? 1.0 : 0.5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.photo),
+                            onPressed: () => _pickImage(ImageSource.gallery),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.camera_alt),
+                            onPressed: () => _pickImage(ImageSource.camera),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _textController,
+                              decoration: const InputDecoration(
+                                hintText: 'Nhập tin nhắn...',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+                            color: _isRecording ? Colors.red : null,
+                            onPressed: _toggleRecording,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.send),
+                            color: Theme.of(context).primaryColor,
+                            onPressed: _handleSend,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                    color: _isRecording ? Colors.red : null,
-                    onPressed: _toggleRecording,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    color: Theme.of(context).primaryColor,
-                    onPressed: _handleSend,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ],
         ),

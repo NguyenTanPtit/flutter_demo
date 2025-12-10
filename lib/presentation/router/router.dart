@@ -10,7 +10,7 @@ import '../screens/login_screen.dart';
 
 // Simple redirect logic would go here in a real app
 final GoRouter router = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/',
   routes: [
     GoRoute(
       path: '/login',

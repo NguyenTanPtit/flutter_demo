@@ -1,61 +1,67 @@
-import 'dart:convert';
-import 'package:dio/dio.dart';
+import 'package:flutter_app/data/models/work_eniity_mapping.dart';
+
 import '../../data/local/database.dart';
 import '../../data/models/work_entity.dart';
-import '../../data/remote/api_client.dart';
+import '../../data/remote/resource.dart'; // Class Resource bạn đã tạo
+import '../../data/services/work_service.dart'; // Import Service đã tạo bài trước
+ // Import extension vừa tạo
 
 class WorkRepository {
-  final ApiClient _apiClient;
+  // Inject WorkService (chứa logic API) chứ không dùng ApiClient trực tiếp nữa
+  final WorkService _workService;
   final AppDatabase _db;
 
-  WorkRepository(this._apiClient, this._db);
+  WorkRepository(this._workService, this._db);
 
-  Future<List<WorkEntity>> searchWorks({
-    required int pageIndex,
-    required int pageSize,
-  }) async {
+  Future<Resource<List<WorkEntity>>> getWorks(int userId) async {
     try {
-      final response = await _apiClient.post('/searchWork', data: {
-        'pageIndex': pageIndex,
-        'pageSize': pageSize,
-      });
+      // 1. Gọi API thông qua Service (đã xử lý payload phức tạp)
+      final apiResource = await _workService.searchWork(userId);
 
-      if (response.statusCode == 200 && response.data['result'] != null) {
-        final List<dynamic> list = response.data['result']['workList'];
-        final works = list.map((e) => WorkEntity.fromJson(e)).toList();
 
-        for (var workEntity in works) {
-          await _db.insertOrUpdateWork(WorkItem(
-            workId: workEntity.workId,
-            workCode: workEntity.workCode,
-            workDescription: workEntity.workDescription,
-            workStatusName: workEntity.workStatusName,
-            workStaffName: workEntity.workStaffName,
-            workCreatedDate: workEntity.workCreatedDate,
-            jsonContent: jsonEncode(workEntity.toJson()),
-          ));
+      if (apiResource is ResourceSuccess) {
+        final responseData = (apiResource as ResourceSuccess).data;
+        final data = responseData?.result?.workList;
+
+        if (data != null && data.isNotEmpty) {
+
+          await _db.transaction(() async {
+
+            await _db.clearWorks();
+
+            for (var entity in data) {
+              await _db.insertOrUpdateWork(entity.toDatabaseModel());
+            }
+          });
+
+          return Resource.success(data);
         }
+        return Resource.success([]);
 
-        return works;
+      } else if (apiResource is ResourceError) {
+
+        return await _fetchLocalData();
       }
-      return [];
+
+      return Resource.loading();
+
     } catch (e) {
-      print('API Error: $e');
-      // If offline, return local data
-       final localWorks = await _db.getAllWorks();
-       return localWorks.map((w) {
-         if (w.jsonContent != null) {
-           return WorkEntity.fromJson(jsonDecode(w.jsonContent!) as Map<String, dynamic>);
-         }
-         return WorkEntity(
-           workId: w.workId,
-           workCode: w.workCode,
-           workDescription: w.workDescription,
-           workStatusName: w.workStatusName,
-           workStaffName: w.workStaffName,
-           workCreatedDate: w.workCreatedDate,
-         );
-       }).toList();
+      return await _fetchLocalData();
+    }
+  }
+
+  Future<Resource<List<WorkEntity>>> _fetchLocalData() async {
+    try {
+      final localItems = await _db.getAllWorks();
+
+      if (localItems.isNotEmpty) {
+        final works = localItems.map((e) => e.toEntity()).toList();
+        return Resource.success(works);
+      }
+
+      return Resource.error(Exception("No internet & No local data"));
+    } catch (dbError) {
+      return Resource.error(dbError);
     }
   }
 }

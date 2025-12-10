@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("kotlin-android")
 }
 
 android {
@@ -56,5 +56,4 @@ flutter {
     source = "../.."
 }
 dependencies {
-    implementation("com.google.mediapipe:tasks-genai:0.10.29")
 }
