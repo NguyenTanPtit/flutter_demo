@@ -24,6 +24,7 @@ dependencies:
   # Networking
   dio: ^5.4.0
   background_downloader: ^9.4.0
+  url_launcher: ^6.3.2
 
   # Navigation
   # go_router v17 requires newer SDKs often, v14 is very stable
