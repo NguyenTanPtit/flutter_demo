@@ -9,7 +9,7 @@ part 'database.g.dart';
 
 @DataClassName('WorkItem')
 class Works extends Table {
-  IntColumn get workId => integer().nullable()();
+  TextColumn get workId => text().nullable()();
   TextColumn get workCode => text()();
   TextColumn get workDescription => text().nullable()();
   TextColumn get workStatusName => text().nullable()();

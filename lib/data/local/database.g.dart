@@ -10,9 +10,9 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkItem> {
   $WorksTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _workIdMeta = const VerificationMeta('workId');
   @override
-  late final GeneratedColumn<int> workId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> workId = GeneratedColumn<String>(
       'work_id', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _workCodeMeta =
       const VerificationMeta('workCode');
   @override
@@ -119,7 +119,7 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkItem> {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return WorkItem(
       workId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}work_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}work_id']),
       workCode: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}work_code'])!,
       workDescription: attachedDatabase.typeMapping.read(
@@ -142,7 +142,7 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkItem> {
 }
 
 class WorkItem extends DataClass implements Insertable<WorkItem> {
-  final int? workId;
+  final String? workId;
   final String workCode;
   final String? workDescription;
   final String? workStatusName;
@@ -161,7 +161,7 @@ class WorkItem extends DataClass implements Insertable<WorkItem> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (!nullToAbsent || workId != null) {
-      map['work_id'] = Variable<int>(workId);
+      map['work_id'] = Variable<String>(workId);
     }
     map['work_code'] = Variable<String>(workCode);
     if (!nullToAbsent || workDescription != null) {
@@ -209,7 +209,7 @@ class WorkItem extends DataClass implements Insertable<WorkItem> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return WorkItem(
-      workId: serializer.fromJson<int?>(json['workId']),
+      workId: serializer.fromJson<String?>(json['workId']),
       workCode: serializer.fromJson<String>(json['workCode']),
       workDescription: serializer.fromJson<String?>(json['workDescription']),
       workStatusName: serializer.fromJson<String?>(json['workStatusName']),
@@ -222,7 +222,7 @@ class WorkItem extends DataClass implements Insertable<WorkItem> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'workId': serializer.toJson<int?>(workId),
+      'workId': serializer.toJson<String?>(workId),
       'workCode': serializer.toJson<String>(workCode),
       'workDescription': serializer.toJson<String?>(workDescription),
       'workStatusName': serializer.toJson<String?>(workStatusName),
@@ -233,7 +233,7 @@ class WorkItem extends DataClass implements Insertable<WorkItem> {
   }
 
   WorkItem copyWith(
-          {Value<int?> workId = const Value.absent(),
+          {Value<String?> workId = const Value.absent(),
           String? workCode,
           Value<String?> workDescription = const Value.absent(),
           Value<String?> workStatusName = const Value.absent(),
@@ -307,7 +307,7 @@ class WorkItem extends DataClass implements Insertable<WorkItem> {
 }
 
 class WorksCompanion extends UpdateCompanion<WorkItem> {
-  final Value<int?> workId;
+  final Value<String?> workId;
   final Value<String> workCode;
   final Value<String?> workDescription;
   final Value<String?> workStatusName;
@@ -336,7 +336,7 @@ class WorksCompanion extends UpdateCompanion<WorkItem> {
     this.rowid = const Value.absent(),
   }) : workCode = Value(workCode);
   static Insertable<WorkItem> custom({
-    Expression<int>? workId,
+    Expression<String>? workId,
     Expression<String>? workCode,
     Expression<String>? workDescription,
     Expression<String>? workStatusName,
@@ -358,7 +358,7 @@ class WorksCompanion extends UpdateCompanion<WorkItem> {
   }
 
   WorksCompanion copyWith(
-      {Value<int?>? workId,
+      {Value<String?>? workId,
       Value<String>? workCode,
       Value<String?>? workDescription,
       Value<String?>? workStatusName,
@@ -382,7 +382,7 @@ class WorksCompanion extends UpdateCompanion<WorkItem> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (workId.present) {
-      map['work_id'] = Variable<int>(workId.value);
+      map['work_id'] = Variable<String>(workId.value);
     }
     if (workCode.present) {
       map['work_code'] = Variable<String>(workCode.value);
@@ -436,7 +436,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 }
 
 typedef $$WorksTableCreateCompanionBuilder = WorksCompanion Function({
-  Value<int?> workId,
+  Value<String?> workId,
   required String workCode,
   Value<String?> workDescription,
   Value<String?> workStatusName,
@@ -446,7 +446,7 @@ typedef $$WorksTableCreateCompanionBuilder = WorksCompanion Function({
   Value<int> rowid,
 });
 typedef $$WorksTableUpdateCompanionBuilder = WorksCompanion Function({
-  Value<int?> workId,
+  Value<String?> workId,
   Value<String> workCode,
   Value<String?> workDescription,
   Value<String?> workStatusName,
@@ -464,7 +464,7 @@ class $$WorksTableFilterComposer extends Composer<_$AppDatabase, $WorksTable> {
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get workId => $composableBuilder(
+  ColumnFilters<String> get workId => $composableBuilder(
       column: $table.workId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get workCode => $composableBuilder(
@@ -498,7 +498,7 @@ class $$WorksTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get workId => $composableBuilder(
+  ColumnOrderings<String> get workId => $composableBuilder(
       column: $table.workId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get workCode => $composableBuilder(
@@ -533,7 +533,7 @@ class $$WorksTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get workId =>
+  GeneratedColumn<String> get workId =>
       $composableBuilder(column: $table.workId, builder: (column) => column);
 
   GeneratedColumn<String> get workCode =>
@@ -578,7 +578,7 @@ class $$WorksTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$WorksTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int?> workId = const Value.absent(),
+            Value<String?> workId = const Value.absent(),
             Value<String> workCode = const Value.absent(),
             Value<String?> workDescription = const Value.absent(),
             Value<String?> workStatusName = const Value.absent(),
@@ -598,7 +598,7 @@ class $$WorksTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int?> workId = const Value.absent(),
+            Value<String?> workId = const Value.absent(),
             required String workCode,
             Value<String?> workDescription = const Value.absent(),
             Value<String?> workStatusName = const Value.absent(),

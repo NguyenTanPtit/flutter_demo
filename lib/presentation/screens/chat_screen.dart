@@ -30,7 +30,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ChatBloc>().add(ChatInit());
   }
 
   void _scrollToBottom() {

@@ -70,6 +70,7 @@ import 'package:flutter_app/data/models/work_eniity_mapping.dart';
 import '../../data/local/database.dart';
 import '../../data/models/work_entity.dart';
 import '../../data/remote/resource.dart';
+import '../../data/remote/types.dart';
 import '../../data/services/work_service.dart';
 
 class WorkRepository {
@@ -82,9 +83,8 @@ class WorkRepository {
     try {
       final apiResource = await _workService.searchWork(userId);
 
-      if (apiResource is ResourceSuccess) {
-        final responseData = (apiResource as ResourceSuccess).data;
-        final data = responseData?.result?.workList;
+      if (apiResource is ResourceSuccess<BaseResponse<SearchWorkResponse>>) {
+        final data = apiResource.data?.result?.workList;
         if (data != null && data.isNotEmpty) {
           await _db.transaction(() async {
             await _db.clearWorks();
@@ -98,11 +98,13 @@ class WorkRepository {
       } else if (apiResource is ResourceError) {
         // FIX: Pass the specific error from the API resource down
         final error = (apiResource as ResourceError).error;
+        print(error);
         return await _fetchLocalData(originalError: error);
       }
       return Resource.loading();
     } catch (e) {
       // FIX: Pass the exception from the try-catch block down
+      print(e);
       return await _fetchLocalData(originalError: e);
     }
   }
@@ -117,6 +119,7 @@ class WorkRepository {
       // If no local data, return the actual error that caused the fallback
       return Resource.error(originalError ?? Exception("Network failed & No local data"));
     } catch (dbError) {
+      print(dbError);
       return Resource.error(dbError);
     }
   }

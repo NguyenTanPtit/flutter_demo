@@ -1,5 +1,5 @@
 class WorkEntity {
-  final int? workId;
+  final String? workId;
   final String? workName;
   final String workCode;
   final String? workTypeId;
@@ -61,7 +61,7 @@ class WorkEntity {
 
   factory WorkEntity.fromJson(Map<String, dynamic> json) {
     return WorkEntity(
-      workId: json['workId'] as int?,
+      workId: json['workId'] as String?,
       workName: json['workName'] as String?,
       workCode: json['workCode'] as String? ?? '',
       workTypeId: json['workTypeId'] as String?,
