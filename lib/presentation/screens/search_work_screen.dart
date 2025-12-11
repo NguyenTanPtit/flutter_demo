@@ -1,19 +1,84 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:math' as math;
 
-// Import các file cần thiết của bạn
 import '../../data/models/work_entity.dart';
 import '../../logic/blocs/work/work_bloc.dart';
 
-// Widget giả lập
+// Widget giả lập (giữ nguyên của bạn)
 class PhoneHighlighter extends StatelessWidget {
   final String text;
   final TextStyle? style;
+
   const PhoneHighlighter({super.key, required this.text, this.style});
+
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: style, maxLines: 2, overflow: TextOverflow.ellipsis);
+    final RegExp phoneRegex = RegExp(r'\b(84|0[3|5|7|8|9])([0-9]{8})\b');
+
+    final List<TextSpan> spans = [];
+    int start = 0;
+
+    // Tìm tất cả các số điện thoại trong chuỗi text
+    for (final match in phoneRegex.allMatches(text)) {
+      // 1. Thêm đoạn text thường nằm trước số điện thoại
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: text.substring(start, match.start),
+          style: style, // Dùng style mặc định truyền vào
+        ));
+      }
+
+      final String phoneNumber = match.group(0)!;
+
+      spans.add(
+        TextSpan(
+          text: phoneNumber,
+          style: (style ?? const TextStyle()).copyWith(
+            color: Colors.blue[700], // Màu xanh nổi bật
+            fontWeight: FontWeight.bold,
+            decoration: TextDecoration.underline, // Gạch chân cho giống link
+            decorationColor: Colors.blue[300],
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              // Xử lý gọi điện
+              final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+              if (await canLaunchUrl(launchUri)) {
+                await launchUrl(launchUri);
+              } else {
+                print("Không thể gọi số này: $phoneNumber");
+              }
+            },
+        ),
+      );
+      start = match.end;
+    }
+
+    // 3. Thêm đoạn text còn lại sau số điện thoại cuối cùng
+    if (start < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(start),
+        style: style,
+      ));
+    }
+
+    // Nếu không tìm thấy số nào, trả về text thường cho nhanh
+    if (spans.isEmpty) {
+      return Text(text, style: style, maxLines: 3, overflow: TextOverflow.ellipsis);
+    }
+
+    // Trả về RichText hỗ trợ highlight
+    return RichText(
+      maxLines: 3, // Giới hạn 3 dòng như ý bạn
+      overflow: TextOverflow.ellipsis, // Cắt đuôi ... nếu dài quá
+      text: TextSpan(
+        style: style ?? DefaultTextStyle.of(context).style,
+        children: spans,
+      ),
+    );
   }
 }
 
@@ -27,9 +92,9 @@ class SearchWorkScreen extends StatefulWidget {
 class _SearchWorkScreenState extends State<SearchWorkScreen> {
   late ScrollController _scrollController;
 
-  // 1. CẤU HÌNH KÍCH THƯỚC
-  // Để hiệu ứng 3D và Snapping chuẩn, cần một chiều cao cơ sở (extent)
-  final double _itemHeight = 200.0;
+  // 1. Cấu hình chiều cao item
+  // Giảm nhẹ chiều cao xuống 180 để 2 item dễ vừa màn hình điện thoại hơn
+  final double _itemHeight = 180.0;
 
   @override
   void initState() {
@@ -44,30 +109,30 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
     super.dispose();
   }
 
-  // 2. HÀM XỬ LÝ SNAP (Tự động trượt vào giữa)
+  // 2. Hàm Snap: Vẫn snap vào index chẵn hoặc lẻ, nhưng logic hiển thị sẽ khác
   void _onScrollEnded() {
     if (!_scrollController.hasClients) return;
 
     final double offset = _scrollController.offset;
-    // Tính index của item đang gần giữa nhất
+    // Tìm index gần nhất
     int index = (offset / _itemHeight).round();
 
-    // Tính toạ độ chính xác để item đó nằm giữa
-    double targetOffset = index * _itemHeight;
-
-    // Animation trượt nhẹ tới vị trí đó
+    // Animation trượt tới vị trí đó
     _scrollController.animateTo(
-      targetOffset,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
+      index * _itemHeight,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutBack,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Tính toán padding để item đầu tiên nằm giữa màn hình
-    // (Chiều cao màn hình / 2) - (Chiều cao item / 2)
-    final double centerPadding = MediaQuery.of(context).size.height / 2 - _itemHeight / 2;
+    // 3. TÍNH PADDING MỚI
+    // Mục tiêu: Hiển thị 2 item ở giữa màn hình.
+    // Công thức: (Chiều cao màn hình - (Chiều cao 1 item * 2)) / 2
+    final double screenHeight = MediaQuery.of(context).size.height;
+    // Dùng math.max để tránh lỗi nếu màn hình quá bé
+    final double verticalPadding = math.max(0.0, (screenHeight - (_itemHeight * 2)) / 2);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -82,20 +147,17 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
           if (state is WorkLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is WorkLoaded) {
-            // 3. BỌC TRONG NOTIFICATION LISTENER ĐỂ BẮT SỰ KIỆN DỪNG CUỘN
             return NotificationListener<ScrollNotification>(
               onNotification: (scrollNotification) {
-                // Khi người dùng thả tay và danh sách ngừng trôi
                 if (scrollNotification is ScrollEndNotification) {
-                  // Gọi hàm snap sau một khoảng trễ cực nhỏ để tránh xung đột gesture
                   Future.microtask(() => _onScrollEnded());
                 }
                 return false;
               },
               child: ListView.builder(
                 controller: _scrollController,
-                // 4. PADDING ĐẶC BIỆT: Giúp item đầu/cuối có thể ra giữa
-                padding: EdgeInsets.symmetric(vertical: centerPadding),
+                // Padding để 2 item đầu tiên nằm giữa màn hình
+                padding: EdgeInsets.symmetric(vertical: verticalPadding),
                 itemCount: state.works.length,
                 itemBuilder: (context, index) {
                   final work = state.works[index];
@@ -103,22 +165,26 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
                   return AnimatedBuilder(
                     animation: _scrollController,
                     builder: (context, child) {
-                      // Tính toán vị trí dựa trên _itemHeight đã cố định
                       double itemPositionOffset = index * _itemHeight;
-                      double difference = _scrollController.hasClients
-                          ? _scrollController.offset - itemPositionOffset
-                          : 0.0;
 
-                      // Logic 3D (đã tinh chỉnh cho mượt hơn với snap)
-                      double rotation = (difference / 500).clamp(-math.pi / 6, math.pi / 6);
-                      double scale = (1 - (difference.abs() / 1000)).clamp(0.8, 1.0); // Scale nhỏ hơn chút để nổi bật item giữa
-                      double opacity = (1 - (difference.abs() / 600)).clamp(0.5, 1.0);
+                      double difference = 0.0;
+                      if (_scrollController.hasClients) {
+
+                        difference = (_scrollController.offset + (_itemHeight / 2)) - itemPositionOffset;
+                      }
+
+                      double rotation = (difference / 500).clamp(-math.pi / 3, math.pi / 3);
+
+                      // Scale cũng chỉnh lại để 2 item cùng to gần bằng nhau
+                      double scale = (1 - (difference.abs() / 1500)).clamp(0.7, 1.0);
+
+                      double opacity = (1 - (difference.abs() / 1000)).clamp(0.3, 1.0);
 
                       return Transform(
                         alignment: Alignment.center,
                         transform: Matrix4.identity()
-                          ..setEntry(3, 2, 0.001)
-                          ..rotateX(-rotation)
+                          ..setEntry(3, 2, 0.0025)
+                          ..rotateX(-rotation) // Item trên ngửa lên, item dưới ngửa xuống
                           ..scale(scale),
                         child: Opacity(
                           opacity: opacity,
@@ -126,7 +192,6 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
                         ),
                       );
                     },
-                    // Truyền height vào để đảm bảo layout khớp với tính toán
                     child: SizedBox(
                       height: _itemHeight,
                       child: _build3DWorkCard(context, work),
@@ -145,41 +210,37 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
   }
 
   Widget _build3DWorkCard(BuildContext context, WorkEntity work) {
+    // Logic màu sắc giữ nguyên
     Color baseColor = Colors.blue;
     if (work.workStatusName?.toLowerCase().contains('hoàn thành') == true) {
       baseColor = Colors.green;
     } else if (work.workStatusName?.toLowerCase().contains('thực hiện') == true) {
       baseColor = Colors.orange;
     }
-
     Color darkTextColor = Color.lerp(baseColor, Colors.black, 0.6) ?? Colors.black;
 
     return Container(
-      // Margin chỉ để tạo khoảng cách giữa các item, height do SizedBox ở trên quản lý
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Stack(
         children: [
-          // Nền trắng + Đổ bóng
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2), // Bóng đậm hơn chút
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
             ),
           ),
-
-          // Gradient nền
           Positioned.fill(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -191,13 +252,10 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
               ),
             ),
           ),
-
-          // Nội dung
           Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(16.0), // Padding nhỏ hơn chút cho layout 180px
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              // mainAxisSize: MainAxisSize.max, // Bung hết chiều cao có thể
               children: [
                 Row(
                   children: [
@@ -205,48 +263,48 @@ class _SearchWorkScreenState extends State<SearchWorkScreen> {
                       child: Text(
                         work.workCode,
                         style: const TextStyle(
-                          fontSize: 20, // To hơn chút
+                          fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: Colors.black87,
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: baseColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         work.workStatusName ?? 'N/A',
                         style: TextStyle(
                           color: darkTextColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Expanded( // Dùng Expanded để đẩy info xuống, tận dụng khoảng trống
+                const SizedBox(height: 8),
+                Expanded(
                   child: PhoneHighlighter(
                     text: work.workDescription ?? 'Không có mô tả',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.4),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.3),
                   ),
                 ),
                 Row(
                   children: [
                     CircleAvatar(
-                      radius: 12,
+                      radius: 10,
                       backgroundColor: Colors.grey[300],
                       backgroundImage: work.workStaffAvatar != null ? NetworkImage(work.workStaffAvatar!) : null,
-                      child: work.workStaffAvatar == null ? Icon(Icons.person, size: 14, color: Colors.grey[600]) : null,
+                      child: work.workStaffAvatar == null ? Icon(Icons.person, size: 12, color: Colors.grey[600]) : null,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       work.workStaffName ?? 'Unassigned',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                     ),
                   ],
                 )
