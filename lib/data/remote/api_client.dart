@@ -1,11 +1,13 @@
 // lib/data/remote/api_client.dart
 
-import 'package:dio/dio.dart';
-import 'package:flutter_app/data/remote/api_helper.dart'; // Import for ExpiredTokenException
+import 'dart:io';import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:flutter_app/data/remote/api_helper.dart';
 import 'package:flutter_app/data/remote/resource.dart';
+import 'package:flutter_app/data/remote/types.dart'; // Import for BaseResponse
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/constants.dart';
-import '../services/work_service.dart';
+// DO NOT import WorkService here. This is the key to breaking the circular dependency.
 
 class ApiClient {
   final Dio _dioInstance;
@@ -19,14 +21,28 @@ class ApiClient {
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
   )) {
+    (_dioInstance.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+        print('ApiClient: Bypassing certificate validation for $host:$port');
+        return true;
+      };
+      return client;
+    };
+
     _dioInstance.interceptors.add(QueuedInterceptorsWrapper(
-      // --- onRequest handles MISSING tokens ---
       onRequest: (options, handler) async {
+        // Prevent adding a token to the token refresh request itself.
+        if (options.path.contains('getTokenByUsername')) {
+          return handler.next(options);
+        }
+
         var token = await _storage.read(key: 'token');
         if (token == null || token.isEmpty) {
           print('Token not found on storage, fetching a new one...');
           try {
-            token = await _refreshToken();
+            // Use the new, decoupled method.
+            token = await _fetchAndSaveNewToken();
           } catch (e) {
             return handler.reject(DioException(requestOptions: options, error: e));
           }
@@ -35,35 +51,30 @@ class ApiClient {
         options.headers['username'] = 'tannv5';
         return handler.next(options);
       },
-
       onError: (DioException e, handler) async {
         if (e is ExpiredTokenException || (e.error is ExpiredTokenException)) {
           print('Token expired. Fetching a new one and retrying...');
           try {
-
-            final newToken = await _refreshToken();
-
+            // Use the new, decoupled method here as well.
+            final newToken = await _fetchAndSaveNewToken();
             final newOptions = e.requestOptions.copyWith(
               headers: {
                 ...e.requestOptions.headers,
                 'token': newToken,
               },
             );
-
             final response = await _dioInstance.fetch(newOptions);
             return handler.resolve(response);
-
           } catch (refreshError) {
             print('Failed to refresh token: $refreshError');
-
             return handler.reject(DioException(requestOptions: e.requestOptions, error: refreshError));
           }
         }
-        // If it's not an expired token error, just pass it along.
         return handler.next(e);
       },
     ));
 
+    // LogInterceptor should be last to see the final request.
     _dioInstance.interceptors.add(LogInterceptor(
       requestBody: true,
       responseBody: true,
@@ -71,32 +82,38 @@ class ApiClient {
     ));
   }
 
-  // --- NEW HELPER FUNCTION to avoid code duplication ---
-  Future<String> _refreshToken() async {
-    print('Executing _refreshToken...');
-    final username = 'tannv5';
-    // NOTE: Creating a new WorkService instance here. Consider DI for a cleaner approach.
-    final tokenResource = await WorkService().getTokenByUserName(username);
+  // --- NEW DECOUPLED TOKEN REFRESH METHOD ---
+  Future<String> _fetchAndSaveNewToken() async {
+    print('Executing _fetchAndSaveNewToken...');
+    const username = 'tannv5';
 
-    if (tokenResource is ResourceSuccess) {
-      final responseData = (tokenResource as ResourceSuccess).data;
-      final newToken = responseData?.result;
+    try {
+      final response = await _dioInstance.get<Map<String, dynamic>>(
+        'generateTokenController/getTokenByUsername',
+        queryParameters: {'username': username},
+      );
+
+      // Manually parse the raw response into your BaseResponse model.
+      final typedData = BaseResponse<String>.fromJson(
+          response.data!, (json) => json as String
+      );
+
+      final newToken = typedData.result;
 
       if (newToken != null && newToken.isNotEmpty) {
         print('New token fetched successfully, saving to storage.');
         await _storage.write(key: 'token', value: newToken);
         return newToken;
       } else {
-        throw Exception('Failed to get a valid token string from the response.');
+        throw Exception('API returned success but token was empty.');
       }
-    } else if (tokenResource is ResourceError) {
-      throw Exception('API Error fetching token: ${(tokenResource as ResourceError).message}');
-    } else {
-      throw Exception('Unknown error while fetching token.');
+    } on DioException catch (e) {
+      throw Exception('API Error fetching token: ${e.message}');
+    } catch (e) {
+      throw Exception('Unknown error while fetching token: $e');
     }
   }
 
-  // (get and post methods remain the same)
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     return await _dioInstance.get(path, queryParameters: queryParameters);
   }

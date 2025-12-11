@@ -86,6 +86,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<_ChatStreamEnd>(_onStreamEnd);
     on<_ChatStreamError>(_onStreamError);
     on<_ChatDownloadProgress>(_onDownloadProgress);
+    add(ChatInit());
   }
 
   Future<void> _onInit(ChatInit event, Emitter<ChatState> emit) async {
@@ -98,7 +99,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       _errorSub = repository.streamError.listen((err) => add(_ChatStreamError(err)));
 
       await repository.init(AppConstants.huggingFaceToken);
-      
+
       emit(state.copyWith(
         isModelReady: true,
         downloadProgress: 100, // Ensure we mark as done even if stream didn't catch 100

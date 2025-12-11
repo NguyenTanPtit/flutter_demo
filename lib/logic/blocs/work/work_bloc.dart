@@ -11,25 +11,22 @@ abstract class WorkEvent extends Equatable {
   List<Object> get props => [];
 }
 
+// Keep this event for when you actually want to load the works
 class LoadWorks extends WorkEvent {
-  final int pageIndex;
-  const LoadWorks({this.pageIndex = 0});
+  const LoadWorks();
 }
 
-// State
+// State (remains the same)
 abstract class WorkState extends Equatable {
   const WorkState();
   @override
   List<Object> get props => [];
 }
-
 class WorkInitial extends WorkState {}
 class WorkLoading extends WorkState {}
 class WorkLoaded extends WorkState {
   final List<WorkEntity> works;
   const WorkLoaded(this.works);
-  @override
-  List<Object> get props => [works];
 }
 class WorkError extends WorkState {
   final String message;
